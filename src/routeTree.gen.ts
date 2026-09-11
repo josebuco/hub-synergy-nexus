@@ -10,33 +10,119 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
+import { Route as AuthRouteImport } from './routes/auth'
+import { Route as AuthenticatedAguaRouteImport } from './routes/_authenticated/agua'
+import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
+import { Route as AuthenticatedLavagemRouteImport } from './routes/_authenticated/lavagem'
+import { Route as AuthenticatedRestauranteRouteImport } from './routes/_authenticated/restaurante'
+import { Route as AuthenticatedTransporteRouteImport } from './routes/_authenticated/transporte'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
+  id: '/_authenticated',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedAguaRoute = AuthenticatedAguaRouteImport.update({
+  id: '/agua',
+  path: '/agua',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedLavagemRoute = AuthenticatedLavagemRouteImport.update({
+  id: '/lavagem',
+  path: '/lavagem',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedRestauranteRoute =
+  AuthenticatedRestauranteRouteImport.update({
+    id: '/restaurante',
+    path: '/restaurante',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedTransporteRoute = AuthenticatedTransporteRouteImport.update({
+  id: '/transporte',
+  path: '/transporte',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
+  '/agua': typeof AuthenticatedAguaRoute
+  '/dashboard': typeof AuthenticatedDashboardRoute
+  '/lavagem': typeof AuthenticatedLavagemRoute
+  '/restaurante': typeof AuthenticatedRestauranteRoute
+  '/transporte': typeof AuthenticatedTransporteRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
+  '/agua': typeof AuthenticatedAguaRoute
+  '/dashboard': typeof AuthenticatedDashboardRoute
+  '/lavagem': typeof AuthenticatedLavagemRoute
+  '/restaurante': typeof AuthenticatedRestauranteRoute
+  '/transporte': typeof AuthenticatedTransporteRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
+  '/auth': typeof AuthRoute
+  '/_authenticated/agua': typeof AuthenticatedAguaRoute
+  '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
+  '/_authenticated/lavagem': typeof AuthenticatedLavagemRoute
+  '/_authenticated/restaurante': typeof AuthenticatedRestauranteRoute
+  '/_authenticated/transporte': typeof AuthenticatedTransporteRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/auth'
+    | '/agua'
+    | '/dashboard'
+    | '/lavagem'
+    | '/restaurante'
+    | '/transporte'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/auth'
+    | '/agua'
+    | '/dashboard'
+    | '/lavagem'
+    | '/restaurante'
+    | '/transporte'
+  id:
+    | '__root__'
+    | '/'
+    | '/_authenticated'
+    | '/auth'
+    | '/_authenticated/agua'
+    | '/_authenticated/dashboard'
+    | '/_authenticated/lavagem'
+    | '/_authenticated/restaurante'
+    | '/_authenticated/transporte'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
+  AuthRoute: typeof AuthRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -48,11 +134,81 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated': {
+      id: '/_authenticated'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AuthenticatedRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/agua': {
+      id: '/_authenticated/agua'
+      path: '/agua'
+      fullPath: '/agua'
+      preLoaderRoute: typeof AuthenticatedAguaRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/dashboard': {
+      id: '/_authenticated/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof AuthenticatedDashboardRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/lavagem': {
+      id: '/_authenticated/lavagem'
+      path: '/lavagem'
+      fullPath: '/lavagem'
+      preLoaderRoute: typeof AuthenticatedLavagemRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/restaurante': {
+      id: '/_authenticated/restaurante'
+      path: '/restaurante'
+      fullPath: '/restaurante'
+      preLoaderRoute: typeof AuthenticatedRestauranteRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/transporte': {
+      id: '/_authenticated/transporte'
+      path: '/transporte'
+      fullPath: '/transporte'
+      preLoaderRoute: typeof AuthenticatedTransporteRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
   }
 }
 
+interface AuthenticatedRouteRouteChildren {
+  AuthenticatedAguaRoute: typeof AuthenticatedAguaRoute
+  AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
+  AuthenticatedLavagemRoute: typeof AuthenticatedLavagemRoute
+  AuthenticatedRestauranteRoute: typeof AuthenticatedRestauranteRoute
+  AuthenticatedTransporteRoute: typeof AuthenticatedTransporteRoute
+}
+
+const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedAguaRoute: AuthenticatedAguaRoute,
+  AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
+  AuthenticatedLavagemRoute: AuthenticatedLavagemRoute,
+  AuthenticatedRestauranteRoute: AuthenticatedRestauranteRoute,
+  AuthenticatedTransporteRoute: AuthenticatedTransporteRoute,
+}
+
+const AuthenticatedRouteRouteWithChildren =
+  AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
+  AuthRoute: AuthRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
