@@ -54,10 +54,10 @@ export const createExpense = createServerFn({ method: "POST" })
         description: z.string().min(1),
         amount: z.number().int().min(0),
         expense_date: z.string().min(1),
-        supplier: z.string().optional().nullable(),
+        supplier: z.string().nullable().default(null),
         status: z.string().min(1),
-        invoice_path: z.string().optional().nullable(),
-        notes: z.string().optional().nullable(),
+        invoice_path: z.string().nullable().default(null),
+        notes: z.string().nullable().default(null),
       })
       .parse(data),
   )
