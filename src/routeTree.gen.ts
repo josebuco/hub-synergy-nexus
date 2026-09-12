@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedAguaRouteImport } from './routes/_authenticated/agua'
+import { Route as AuthenticatedCustosRouteImport } from './routes/_authenticated/custos'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedLavagemRouteImport } from './routes/_authenticated/lavagem'
 import { Route as AuthenticatedRestauranteRouteImport } from './routes/_authenticated/restaurante'
@@ -35,6 +36,11 @@ const AuthRoute = AuthRouteImport.update({
 const AuthenticatedAguaRoute = AuthenticatedAguaRouteImport.update({
   id: '/agua',
   path: '/agua',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedCustosRoute = AuthenticatedCustosRouteImport.update({
+  id: '/custos',
+  path: '/custos',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
@@ -63,6 +69,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/agua': typeof AuthenticatedAguaRoute
+  '/custos': typeof AuthenticatedCustosRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/lavagem': typeof AuthenticatedLavagemRoute
   '/restaurante': typeof AuthenticatedRestauranteRoute
@@ -72,6 +79,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/agua': typeof AuthenticatedAguaRoute
+  '/custos': typeof AuthenticatedCustosRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/lavagem': typeof AuthenticatedLavagemRoute
   '/restaurante': typeof AuthenticatedRestauranteRoute
@@ -83,6 +91,7 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/_authenticated/agua': typeof AuthenticatedAguaRoute
+  '/_authenticated/custos': typeof AuthenticatedCustosRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/lavagem': typeof AuthenticatedLavagemRoute
   '/_authenticated/restaurante': typeof AuthenticatedRestauranteRoute
@@ -94,6 +103,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/agua'
+    | '/custos'
     | '/dashboard'
     | '/lavagem'
     | '/restaurante'
@@ -103,6 +113,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/agua'
+    | '/custos'
     | '/dashboard'
     | '/lavagem'
     | '/restaurante'
@@ -113,6 +124,7 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/auth'
     | '/_authenticated/agua'
+    | '/_authenticated/custos'
     | '/_authenticated/dashboard'
     | '/_authenticated/lavagem'
     | '/_authenticated/restaurante'
@@ -155,6 +167,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAguaRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/custos': {
+      id: '/_authenticated/custos'
+      path: '/custos'
+      fullPath: '/custos'
+      preLoaderRoute: typeof AuthenticatedCustosRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/dashboard': {
       id: '/_authenticated/dashboard'
       path: '/dashboard'
@@ -188,6 +207,7 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedAguaRoute: typeof AuthenticatedAguaRoute
+  AuthenticatedCustosRoute: typeof AuthenticatedCustosRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedLavagemRoute: typeof AuthenticatedLavagemRoute
   AuthenticatedRestauranteRoute: typeof AuthenticatedRestauranteRoute
@@ -196,6 +216,7 @@ interface AuthenticatedRouteRouteChildren {
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAguaRoute: AuthenticatedAguaRoute,
+  AuthenticatedCustosRoute: AuthenticatedCustosRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedLavagemRoute: AuthenticatedLavagemRoute,
   AuthenticatedRestauranteRoute: AuthenticatedRestauranteRoute,
