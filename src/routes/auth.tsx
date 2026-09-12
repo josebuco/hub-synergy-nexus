@@ -54,7 +54,7 @@ function AuthPage() {
           password,
         });
         if (error) throw error;
-        navigate({ to: "/", replace: true });
+        navigate({ to: "/dashboard", replace: true });
       }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Erro ao autenticar");
