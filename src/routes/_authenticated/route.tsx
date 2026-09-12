@@ -20,6 +20,7 @@ const sectors = [
   { id: "/restaurante", label: "Restaurante", color: "bg-restaurant" },
   { id: "/lavagem", label: "Lavagem", color: "bg-wash" },
   { id: "/transporte", label: "Transporte Escolar", color: "bg-transport" },
+  { id: "/custos", label: "Centro de Custos", color: "bg-brand" },
 ];
 
 function AuthenticatedLayout() {
