@@ -1,6 +1,22 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { queryOptions, useSuspenseQuery } from "@tanstack/react-query";
+import { queryOptions, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import { useState } from "react";
+import { toast } from "sonner";
 import { getRestaurantData } from "@/lib/sectors.functions";
+import { createMenuItem, createOrder, createTable, deleteRecord, updateOrderStatus } from "@/lib/crud.functions";
+import {
+  ActionButton,
+  Card,
+  Field,
+  FormPanel,
+  Kpi,
+  PageHeader,
+  Td,
+  Th,
+  formatMoney,
+  inputClass,
+} from "@/components/panel";
 
 const restaurantOptions = queryOptions({
   queryKey: ["sector", "restaurante"],
@@ -11,7 +27,11 @@ export const Route = createFileRoute("/_authenticated/restaurante")({
   head: () => ({
     meta: [
       { title: "Restaurante — Kilombwe" },
-      { name: "description", content: "Gestão de mesas, pedidos e cozinha." },
+      { name: "description", content: "Gestão de mesas, pedidos e menu do restaurante." },
+      { property: "og:title", content: "Restaurante — Kilombwe" },
+      { property: "og:description", content: "Gestão de mesas, pedidos e menu do restaurante." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
   loader: async ({ context }) => {
@@ -20,48 +40,168 @@ export const Route = createFileRoute("/_authenticated/restaurante")({
   component: RestaurantePage,
 });
 
-function formatMoney(value: number) {
-  return value.toLocaleString("pt-AO");
-}
+const ORDER_STATES = ["Em curso", "Pronto", "Fechado", "Cancelado"];
 
 function RestaurantePage() {
   const { data } = useSuspenseQuery(restaurantOptions);
+  const qc = useQueryClient();
+  const addOrder = useServerFn(createOrder);
+  const addTable = useServerFn(createTable);
+  const addMenuItem = useServerFn(createMenuItem);
+  const setStatus = useServerFn(updateOrderStatus);
+  const removeRecord = useServerFn(deleteRecord);
+
+  const [form, setForm] = useState<"none" | "order" | "table" | "menu">("none");
+  const [saving, setSaving] = useState(false);
   const avgTicket = data.todayOrders > 0 ? Math.round(data.todayRevenue / data.todayOrders) : 0;
+
+  async function run(fn: () => Promise<unknown>, message: string) {
+    setSaving(true);
+    try {
+      await fn();
+      toast.success(message);
+      setForm("none");
+      await qc.invalidateQueries({ queryKey: ["sector", "restaurante"] });
+      await qc.invalidateQueries({ queryKey: ["finance"] });
+      await qc.invalidateQueries({ queryKey: ["dashboard"] });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Não foi possível guardar.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function onOrder(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const f = new FormData(e.currentTarget);
+    const tableId = String(f.get("table_id") || "");
+    void run(
+      () =>
+        addOrder({
+          data: {
+            table_id: tableId || null,
+            total: Number(f.get("total")),
+            status: String(f.get("status")),
+          },
+        }),
+      "Pedido registado.",
+    );
+  }
+
+  function onTable(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const f = new FormData(e.currentTarget);
+    void run(
+      () =>
+        addTable({
+          data: {
+            number: Number(f.get("number")),
+            capacity: Number(f.get("capacity")),
+            status: String(f.get("status")),
+          },
+        }),
+      "Mesa criada.",
+    );
+  }
+
+  function onMenu(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const f = new FormData(e.currentTarget);
+    void run(
+      () => addMenuItem({ data: { name: String(f.get("name")), price: Number(f.get("price")) } }),
+      "Prato adicionado.",
+    );
+  }
 
   return (
     <div className="flex-1 flex flex-col min-w-0">
-      <header className="h-16 shrink-0 bg-panel/80 border-b border-edge flex items-center justify-between px-6">
-        <div>
-          <h1 className="font-display font-semibold text-lg uppercase tracking-wide text-foreground inline-flex items-center gap-2">
-            <span className="size-2 rounded-full bg-restaurant" />Restaurante
-          </h1>
-          <p className="text-[11px] text-muted-foreground">Mesas, pedidos e menu</p>
-        </div>
-        <button className="px-3 py-1.5 text-sm font-medium text-primary-foreground bg-restaurant rounded-md hover:bg-restaurant/90">
-          + Novo pedido
-        </button>
-      </header>
+      <PageHeader
+        dot="bg-restaurant"
+        title="Restaurante"
+        subtitle="Mesas, pedidos e menu"
+        action={
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => setForm(form === "menu" ? "none" : "menu")}
+              className="px-3 py-1.5 text-sm font-medium rounded-md ring-1 ring-edge text-foreground hover:bg-white/5"
+            >
+              + Prato
+            </button>
+            <button
+              onClick={() => setForm(form === "table" ? "none" : "table")}
+              className="px-3 py-1.5 text-sm font-medium rounded-md ring-1 ring-edge text-foreground hover:bg-white/5"
+            >
+              + Mesa
+            </button>
+            <button
+              onClick={() => setForm(form === "order" ? "none" : "order")}
+              className="px-3 py-1.5 text-sm font-medium text-primary-foreground bg-restaurant rounded-md hover:bg-restaurant/90"
+            >
+              + Novo pedido
+            </button>
+          </div>
+        }
+      />
 
       <div className="flex-1 overflow-auto p-6 space-y-5">
-        <section className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <div className="rounded-lg bg-panel ring-1 ring-black/5 p-4">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Vendas hoje</p>
-            <p className="font-display font-semibold text-2xl text-foreground mt-2">{formatMoney(data.todayRevenue)} Kz</p>
-          </div>
-          <div className="rounded-lg bg-panel ring-1 ring-black/5 p-4">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Mesas ocupadas</p>
-            <p className="font-display font-semibold text-2xl text-foreground mt-2">{data.occupied} / {data.tables.length}</p>
-          </div>
-          <div className="rounded-lg bg-panel ring-1 ring-black/5 p-4">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Ticket médio</p>
-            <p className="font-display font-semibold text-2xl text-foreground mt-2">{formatMoney(avgTicket)} Kz</p>
-          </div>
+        <section className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+          <Kpi label="Vendas hoje" value={formatMoney(data.todayRevenue)} />
+          <Kpi label="Pedidos hoje" value={data.todayOrders} />
+          <Kpi label="Mesas ocupadas" value={`${data.occupied} / ${data.tables.length}`} />
+          <Kpi label="Ticket médio" value={formatMoney(avgTicket)} />
         </section>
 
+        <FormPanel open={form === "order"} title="Novo pedido" saving={saving} onSubmit={onOrder}>
+          <Field label="Mesa">
+            <select name="table_id" className={inputClass} defaultValue="">
+              <option value="">Sem mesa (balcão / take-away)</option>
+              {data.tables.map((t) => (
+                <option key={t.id} value={t.id}>
+                  Mesa {t.number}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <Field label="Total (Kz)">
+            <input name="total" type="number" min={0} required className={inputClass} />
+          </Field>
+          <Field label="Estado">
+            <select name="status" className={inputClass} defaultValue="Em curso">
+              {ORDER_STATES.map((s) => (
+                <option key={s}>{s}</option>
+              ))}
+            </select>
+          </Field>
+        </FormPanel>
+
+        <FormPanel open={form === "table"} title="Nova mesa" saving={saving} onSubmit={onTable}>
+          <Field label="Número">
+            <input name="number" type="number" min={1} required className={inputClass} />
+          </Field>
+          <Field label="Lugares">
+            <input name="capacity" type="number" min={1} defaultValue={4} required className={inputClass} />
+          </Field>
+          <Field label="Estado">
+            <select name="status" className={inputClass} defaultValue="Livre">
+              <option>Livre</option>
+              <option>Ocupada</option>
+              <option>Reservada</option>
+            </select>
+          </Field>
+        </FormPanel>
+
+        <FormPanel open={form === "menu"} title="Novo prato" saving={saving} onSubmit={onMenu}>
+          <Field label="Prato">
+            <input name="name" required className={inputClass} placeholder="Calulu de peixe" />
+          </Field>
+          <Field label="Preço (Kz)">
+            <input name="price" type="number" min={0} required className={inputClass} />
+          </Field>
+        </FormPanel>
+
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-          <div className="rounded-lg bg-panel ring-1 ring-black/5 p-5">
-            <h2 className="font-display font-semibold text-base uppercase tracking-wide text-foreground mb-4">Estado das mesas</h2>
-            <div className="grid grid-cols-3 gap-3">
+          <Card title="Estado das mesas">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 p-5">
               {data.tables.map((t) => (
                 <div
                   key={t.id}
@@ -69,41 +209,111 @@ function RestaurantePage() {
                     t.status === "Ocupada"
                       ? "bg-restaurant/10 ring-restaurant/30"
                       : t.status === "Reservada"
-                      ? "bg-warning/10 ring-warning/30"
-                      : "bg-ink ring-edge"
+                        ? "bg-warning/10 ring-warning/30"
+                        : "bg-ink ring-edge"
                   }`}
                 >
                   <p className="font-display font-semibold text-foreground">Mesa {t.number}</p>
                   <p className="text-[11px] text-muted-foreground">{t.capacity} lugares</p>
-                  <p className={`text-xs mt-2 font-medium ${
-                    t.status === "Ocupada" ? "text-restaurant" : t.status === "Reservada" ? "text-warning" : "text-muted-foreground"
-                  }`}>{t.status}</p>
-                  <p className="text-xs text-foreground/80 mt-1">{t.current_order_value ? `${formatMoney(t.current_order_value)} Kz` : "—"}</p>
+                  <p
+                    className={`text-xs mt-2 font-medium ${
+                      t.status === "Ocupada"
+                        ? "text-restaurant"
+                        : t.status === "Reservada"
+                          ? "text-warning"
+                          : "text-muted-foreground"
+                    }`}
+                  >
+                    {t.status}
+                  </p>
+                  <p className="text-xs text-foreground/80 mt-1">
+                    {t.current_order_value ? formatMoney(t.current_order_value) : "—"}
+                  </p>
                 </div>
               ))}
             </div>
-          </div>
+          </Card>
 
-          <div className="rounded-lg bg-panel ring-1 ring-black/5 p-5">
-            <h2 className="font-display font-semibold text-base uppercase tracking-wide text-foreground mb-4">Menu principal</h2>
+          <Card title="Pedidos de hoje">
             <table className="w-full text-sm">
-              <thead>
-                <tr className="text-[11px] uppercase tracking-[0.1em] text-muted-foreground border-b border-edge text-left">
-                  <th className="px-3 py-2.5">Prato</th>
-                  <th className="px-3 py-2.5">Preço</th>
+              <thead className="border-b border-edge text-left">
+                <tr>
+                  <Th>Mesa</Th>
+                  <Th>Total</Th>
+                  <Th>Estado</Th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-edge/60">
-                {data.menuItems.map((m) => (
-                  <tr key={m.id} className="hover:bg-white/[0.02]">
-                    <td className="px-3 py-3 text-foreground">{m.name}</td>
-                    <td className="px-3 py-3 text-foreground/80">{formatMoney(m.price)} Kz</td>
+                {data.orders.length === 0 ? (
+                  <tr>
+                    <Td className="text-muted-foreground">Sem pedidos hoje.</Td>
+                    <Td>—</Td>
+                    <Td>—</Td>
                   </tr>
-                ))}
+                ) : (
+                  data.orders.map((o) => (
+                    <tr key={o.id} className="hover:bg-white/[0.02]">
+                      <Td>
+                        {(o.restaurant_tables as unknown as { number: number })?.number
+                          ? `Mesa ${(o.restaurant_tables as unknown as { number: number }).number}`
+                          : "Balcão"}
+                      </Td>
+                      <Td>{formatMoney(o.total)}</Td>
+                      <Td>
+                        <select
+                          value={o.status}
+                          onChange={(e) =>
+                            void run(
+                              () => setStatus({ data: { id: o.id, status: e.target.value } }),
+                              "Estado actualizado.",
+                            )
+                          }
+                          className="rounded-md bg-ink ring-1 ring-edge px-2 py-1 text-xs text-foreground"
+                        >
+                          {ORDER_STATES.map((s) => (
+                            <option key={s}>{s}</option>
+                          ))}
+                        </select>
+                      </Td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
-          </div>
+          </Card>
         </div>
+
+        <Card title="Menu principal">
+          <table className="w-full text-sm">
+            <thead className="border-b border-edge text-left">
+              <tr>
+                <Th>Prato</Th>
+                <Th>Preço</Th>
+                <Th>Acção</Th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-edge/60">
+              {data.menuItems.map((m) => (
+                <tr key={m.id} className="hover:bg-white/[0.02]">
+                  <Td>{m.name}</Td>
+                  <Td>{formatMoney(m.price)}</Td>
+                  <Td>
+                    <ActionButton
+                      onClick={() =>
+                        void run(
+                          () => removeRecord({ data: { table: "restaurant_menu_items", id: m.id } }),
+                          "Prato removido.",
+                        )
+                      }
+                    >
+                      Apagar
+                    </ActionButton>
+                  </Td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </Card>
       </div>
     </div>
   );
