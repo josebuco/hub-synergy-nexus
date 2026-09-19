@@ -58,7 +58,8 @@ export const getFinance = createServerFn({ method: "GET" })
 
     const add = (bag: Record<string, Record<string, number>>, sector: string, when: string, amount: number) => {
       const key = monthKey(new Date(when));
-      if (bag[sector] && key in bag[sector]) bag[sector][key] += amount || 0;
+      const bucket = bag[sector];
+      if (bucket && key in bucket) bucket[key] = (bucket[key] || 0) + (amount || 0);
     };
 
     const entries: Array<{

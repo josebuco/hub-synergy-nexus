@@ -1,6 +1,27 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { queryOptions, useSuspenseQuery } from "@tanstack/react-query";
+import { queryOptions, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import { useState } from "react";
+import { toast } from "sonner";
 import { getWaterData } from "@/lib/sectors.functions";
+import {
+  createWaterProduct,
+  createWaterSale,
+  deleteRecord,
+  updateWaterSaleStatus,
+} from "@/lib/crud.functions";
+import {
+  ActionButton,
+  Card,
+  Field,
+  FormPanel,
+  Kpi,
+  PageHeader,
+  Td,
+  Th,
+  formatMoney,
+  inputClass,
+} from "@/components/panel";
 
 const waterOptions = queryOptions({
   queryKey: ["sector", "agua"],
@@ -11,7 +32,11 @@ export const Route = createFileRoute("/_authenticated/agua")({
   head: () => ({
     meta: [
       { title: "Estação de Água — Kilombwe" },
-      { name: "description", content: "Gestão de vendas e stock de água." },
+      { name: "description", content: "Gestão de vendas, stock e entregas de água." },
+      { property: "og:title", content: "Estação de Água — Kilombwe" },
+      { property: "og:description", content: "Gestão de vendas, stock e entregas de água." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
   loader: async ({ context }) => {
@@ -20,92 +45,223 @@ export const Route = createFileRoute("/_authenticated/agua")({
   component: AguaPage,
 });
 
-function formatMoney(value: number) {
-  return value.toLocaleString("pt-AO");
-}
-
 function AguaPage() {
   const { data } = useSuspenseQuery(waterOptions);
+  const qc = useQueryClient();
+  const addSale = useServerFn(createWaterSale);
+  const addProduct = useServerFn(createWaterProduct);
+  const setStatus = useServerFn(updateWaterSaleStatus);
+  const removeRecord = useServerFn(deleteRecord);
+
+  const [form, setForm] = useState<"none" | "sale" | "product">("none");
+  const [saving, setSaving] = useState(false);
+
   const pending = data.sales.filter((s) => s.status === "Pendente").length;
+
+  async function refresh() {
+    await qc.invalidateQueries({ queryKey: ["sector", "agua"] });
+    await qc.invalidateQueries({ queryKey: ["finance"] });
+    await qc.invalidateQueries({ queryKey: ["dashboard"] });
+  }
+
+  async function run(fn: () => Promise<unknown>, message: string) {
+    setSaving(true);
+    try {
+      await fn();
+      toast.success(message);
+      setForm("none");
+      await refresh();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Não foi possível guardar.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function onSale(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const f = new FormData(e.currentTarget);
+    void run(
+      () =>
+        addSale({
+          data: {
+            product_id: String(f.get("product_id")),
+            quantity: Number(f.get("quantity")),
+            client_name: String(f.get("client_name") || "").trim() || null,
+            status: String(f.get("status")),
+          },
+        }),
+      "Venda registada.",
+    );
+  }
+
+  function onProduct(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const f = new FormData(e.currentTarget);
+    void run(
+      () =>
+        addProduct({
+          data: {
+            name: String(f.get("name")),
+            price: Number(f.get("price")),
+            stock: Number(f.get("stock")),
+            unit: String(f.get("unit")),
+          },
+        }),
+      "Produto criado.",
+    );
+  }
 
   return (
     <div className="flex-1 flex flex-col min-w-0">
-      <header className="h-16 shrink-0 bg-panel/80 border-b border-edge flex items-center justify-between px-6">
-        <div>
-          <h1 className="font-display font-semibold text-lg uppercase tracking-wide text-foreground inline-flex items-center gap-2">
-            <span className="size-2 rounded-full bg-water" />Estação de Água
-          </h1>
-          <p className="text-[11px] text-muted-foreground">Vendas, stock e entregas</p>
-        </div>
-        <button className="px-3 py-1.5 text-sm font-medium text-primary-foreground bg-water rounded-md hover:bg-water/90">
-          + Nova venda
-        </button>
-      </header>
+      <PageHeader
+        dot="bg-water"
+        title="Estação de Água"
+        subtitle="Vendas, stock e entregas"
+        action={
+          <div className="flex gap-2">
+            <button
+              onClick={() => setForm(form === "product" ? "none" : "product")}
+              className="px-3 py-1.5 text-sm font-medium rounded-md ring-1 ring-edge text-foreground hover:bg-white/5"
+            >
+              + Produto
+            </button>
+            <button
+              onClick={() => setForm(form === "sale" ? "none" : "sale")}
+              className="px-3 py-1.5 text-sm font-medium text-primary-foreground bg-water rounded-md hover:bg-water/90"
+            >
+              + Nova venda
+            </button>
+          </div>
+        }
+      />
 
       <div className="flex-1 overflow-auto p-6 space-y-5">
-        <section className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <div className="rounded-lg bg-panel ring-1 ring-black/5 p-4">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Vendas hoje</p>
-            <p className="font-display font-semibold text-2xl text-foreground mt-2">{formatMoney(data.todayRevenue)} Kz</p>
-          </div>
-          <div className="rounded-lg bg-panel ring-1 ring-black/5 p-4">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Vendas hoje</p>
-            <p className="font-display font-semibold text-2xl text-foreground mt-2">{data.todaySalesCount}</p>
-          </div>
-          <div className="rounded-lg bg-panel ring-1 ring-black/5 p-4">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Entregas pendentes</p>
-            <p className="font-display font-semibold text-2xl text-warning mt-2">{pending}</p>
-          </div>
+        <section className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+          <Kpi label="Receita hoje" value={formatMoney(data.todayRevenue)} />
+          <Kpi label="Vendas hoje" value={data.todaySalesCount} />
+          <Kpi label="Entregas pendentes" value={pending} tone="text-warning" />
+          <Kpi label="Stock baixo" value={data.lowStock} tone="text-warning" />
         </section>
 
+        <FormPanel open={form === "sale"} title="Nova venda" saving={saving} onSubmit={onSale}>
+          <Field label="Produto">
+            <select name="product_id" required className={inputClass}>
+              {data.products.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name} — {formatMoney(p.price)}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <Field label="Quantidade">
+            <input name="quantity" type="number" min={1} defaultValue={1} required className={inputClass} />
+          </Field>
+          <Field label="Cliente">
+            <input name="client_name" placeholder="Opcional" className={inputClass} />
+          </Field>
+          <Field label="Estado">
+            <select name="status" className={inputClass} defaultValue="Entregue">
+              <option>Entregue</option>
+              <option>Pendente</option>
+            </select>
+          </Field>
+        </FormPanel>
+
+        <FormPanel open={form === "product"} title="Novo produto" saving={saving} onSubmit={onProduct}>
+          <Field label="Nome">
+            <input name="name" required className={inputClass} placeholder="Garrafão 20L" />
+          </Field>
+          <Field label="Preço (Kz)">
+            <input name="price" type="number" min={0} required className={inputClass} />
+          </Field>
+          <Field label="Stock">
+            <input name="stock" type="number" min={0} defaultValue={0} required className={inputClass} />
+          </Field>
+          <Field label="Unidade">
+            <input name="unit" defaultValue="unidade" required className={inputClass} />
+          </Field>
+        </FormPanel>
+
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-          <div className="rounded-lg bg-panel ring-1 ring-black/5 p-5">
-            <h2 className="font-display font-semibold text-base uppercase tracking-wide text-foreground mb-4">Preços e stock</h2>
+          <Card title="Preços e stock">
             <table className="w-full text-sm">
-              <thead>
-                <tr className="text-[11px] uppercase tracking-[0.1em] text-muted-foreground border-b border-edge text-left">
-                  <th className="px-3 py-2.5">Produto</th>
-                  <th className="px-3 py-2.5">Preço</th>
-                  <th className="px-3 py-2.5">Stock</th>
+              <thead className="border-b border-edge text-left">
+                <tr>
+                  <Th>Produto</Th>
+                  <Th>Preço</Th>
+                  <Th>Stock</Th>
+                  <Th>Acção</Th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-edge/60">
                 {data.products.map((p) => (
                   <tr key={p.id} className="hover:bg-white/[0.02]">
-                    <td className="px-3 py-3 text-foreground">{p.name}</td>
-                    <td className="px-3 py-3 text-foreground/80">{formatMoney(p.price)} Kz/{p.unit}</td>
-                    <td className="px-3 py-3 text-muted-foreground">{p.stock}</td>
+                    <Td>{p.name}</Td>
+                    <Td>
+                      {formatMoney(p.price)}/{p.unit}
+                    </Td>
+                    <Td className={p.stock < 20 ? "text-warning" : ""}>{p.stock}</Td>
+                    <Td>
+                      <ActionButton
+                        onClick={() =>
+                          void run(
+                            () => removeRecord({ data: { table: "water_products", id: p.id } }),
+                            "Produto removido.",
+                          )
+                        }
+                      >
+                        Apagar
+                      </ActionButton>
+                    </Td>
                   </tr>
                 ))}
               </tbody>
             </table>
-          </div>
+          </Card>
 
-          <div className="rounded-lg bg-panel ring-1 ring-black/5 p-5">
-            <h2 className="font-display font-semibold text-base uppercase tracking-wide text-foreground mb-4">Vendas recentes</h2>
+          <Card title="Vendas recentes">
             <table className="w-full text-sm">
-              <thead>
-                <tr className="text-[11px] uppercase tracking-[0.1em] text-muted-foreground border-b border-edge text-left">
-                  <th className="px-3 py-2.5">Item</th>
-                  <th className="px-3 py-2.5">Cliente</th>
-                  <th className="px-3 py-2.5">Valor</th>
-                  <th className="px-3 py-2.5">Estado</th>
+              <thead className="border-b border-edge text-left">
+                <tr>
+                  <Th>Item</Th>
+                  <Th>Cliente</Th>
+                  <Th>Valor</Th>
+                  <Th>Estado</Th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-edge/60">
                 {data.sales.map((s) => (
                   <tr key={s.id} className="hover:bg-white/[0.02]">
-                    <td className="px-3 py-3 text-foreground">
+                    <Td>
                       {(s.water_products as unknown as { name: string })?.name} × {s.quantity}
-                    </td>
-                    <td className="px-3 py-3 text-muted-foreground">{s.client_name || "—"}</td>
-                    <td className="px-3 py-3 text-foreground/80">{formatMoney(s.total)} Kz</td>
-                    <td className="px-3 py-3 text-muted-foreground">{s.status}</td>
+                    </Td>
+                    <Td>{s.client_name || "—"}</Td>
+                    <Td>{formatMoney(s.total)}</Td>
+                    <Td>
+                      <div className="flex items-center gap-2">
+                        <span className={s.status === "Pendente" ? "text-warning" : "text-muted-foreground"}>
+                          {s.status}
+                        </span>
+                        {s.status === "Pendente" ? (
+                          <ActionButton
+                            onClick={() =>
+                              void run(
+                                () => setStatus({ data: { id: s.id, status: "Entregue" } }),
+                                "Entrega concluída.",
+                              )
+                            }
+                          >
+                            Entregar
+                          </ActionButton>
+                        ) : null}
+                      </div>
+                    </Td>
                   </tr>
                 ))}
               </tbody>
             </table>
-          </div>
+          </Card>
         </div>
       </div>
     </div>

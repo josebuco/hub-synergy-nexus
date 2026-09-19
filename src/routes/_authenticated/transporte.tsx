@@ -1,6 +1,28 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { queryOptions, useSuspenseQuery } from "@tanstack/react-query";
+import { queryOptions, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import { useState } from "react";
+import { toast } from "sonner";
 import { getTransportData } from "@/lib/sectors.functions";
+import {
+  createContract,
+  createRoute as createRouteFn,
+  deleteRecord,
+  updateContractStatus,
+  updateRouteStatus,
+} from "@/lib/crud.functions";
+import {
+  ActionButton,
+  Card,
+  Field,
+  FormPanel,
+  Kpi,
+  PageHeader,
+  Td,
+  Th,
+  formatMoney,
+  inputClass,
+} from "@/components/panel";
 
 const transportOptions = queryOptions({
   queryKey: ["sector", "transporte"],
@@ -11,7 +33,11 @@ export const Route = createFileRoute("/_authenticated/transporte")({
   head: () => ({
     meta: [
       { title: "Transporte Escolar — Kilombwe" },
-      { name: "description", content: "Gestão de contratos, rotas e alunos." },
+      { name: "description", content: "Contratos com escolas, rotas, motoristas e alunos." },
+      { property: "og:title", content: "Transporte Escolar — Kilombwe" },
+      { property: "og:description", content: "Contratos com escolas, rotas, motoristas e alunos." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
   loader: async ({ context }) => {
@@ -20,99 +46,255 @@ export const Route = createFileRoute("/_authenticated/transporte")({
   component: TransportePage,
 });
 
-function formatMoney(value: number) {
-  return value.toLocaleString("pt-AO");
-}
+const CONTRACT_STATES = ["Activo", "Pendente", "Suspenso", "Terminado"];
+const ROUTE_STATES = ["Em curso", "Concluída", "Parada"];
 
 function TransportePage() {
   const { data } = useSuspenseQuery(transportOptions);
+  const qc = useQueryClient();
+  const addContract = useServerFn(createContract);
+  const addRoute = useServerFn(createRouteFn);
+  const setContractStatus = useServerFn(updateContractStatus);
+  const setRouteStatus = useServerFn(updateRouteStatus);
+  const removeRecord = useServerFn(deleteRecord);
+
+  const [form, setForm] = useState<"none" | "contract" | "route">("none");
+  const [saving, setSaving] = useState(false);
+
+  async function run(fn: () => Promise<unknown>, message: string) {
+    setSaving(true);
+    try {
+      await fn();
+      toast.success(message);
+      setForm("none");
+      await qc.invalidateQueries({ queryKey: ["sector", "transporte"] });
+      await qc.invalidateQueries({ queryKey: ["finance"] });
+      await qc.invalidateQueries({ queryKey: ["dashboard"] });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Não foi possível guardar.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function onContract(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const f = new FormData(e.currentTarget);
+    void run(
+      () =>
+        addContract({
+          data: {
+            school_name: String(f.get("school_name")),
+            route_code: String(f.get("route_code")),
+            student_count: Number(f.get("student_count")),
+            monthly_fee: Number(f.get("monthly_fee")),
+            status: String(f.get("status")),
+          },
+        }),
+      "Contrato registado.",
+    );
+  }
+
+  function onRoute(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const f = new FormData(e.currentTarget);
+    void run(
+      () =>
+        addRoute({
+          data: {
+            route_code: String(f.get("route_code")),
+            driver_name: String(f.get("driver_name")),
+            vehicle: String(f.get("vehicle")),
+            student_count: Number(f.get("student_count")),
+            status: String(f.get("status")),
+          },
+        }),
+      "Rota registada.",
+    );
+  }
 
   return (
     <div className="flex-1 flex flex-col min-w-0">
-      <header className="h-16 shrink-0 bg-panel/80 border-b border-edge flex items-center justify-between px-6">
-        <div>
-          <h1 className="font-display font-semibold text-lg uppercase tracking-wide text-foreground inline-flex items-center gap-2">
-            <span className="size-2 rounded-full bg-transport" />Transporte Escolar
-          </h1>
-          <p className="text-[11px] text-muted-foreground">Contratos, rotas e alunos</p>
-        </div>
-        <button className="px-3 py-1.5 text-sm font-medium text-primary-foreground bg-transport rounded-md hover:bg-transport/90">
-          + Novo contrato
-        </button>
-      </header>
+      <PageHeader
+        dot="bg-transport"
+        title="Transporte Escolar"
+        subtitle="Contratos, rotas e alunos"
+        action={
+          <div className="flex gap-2">
+            <button
+              onClick={() => setForm(form === "route" ? "none" : "route")}
+              className="px-3 py-1.5 text-sm font-medium rounded-md ring-1 ring-edge text-foreground hover:bg-white/5"
+            >
+              + Rota
+            </button>
+            <button
+              onClick={() => setForm(form === "contract" ? "none" : "contract")}
+              className="px-3 py-1.5 text-sm font-medium text-primary-foreground bg-transport rounded-md hover:bg-transport/90"
+            >
+              + Novo contrato
+            </button>
+          </div>
+        }
+      />
 
       <div className="flex-1 overflow-auto p-6 space-y-5">
-        <section className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <div className="rounded-lg bg-panel ring-1 ring-black/5 p-4">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Contratos activos</p>
-            <p className="font-display font-semibold text-2xl text-foreground mt-2">{data.activeContracts}</p>
-          </div>
-          <div className="rounded-lg bg-panel ring-1 ring-black/5 p-4">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Alunos transportados</p>
-            <p className="font-display font-semibold text-2xl text-foreground mt-2">{data.totalStudents}</p>
-          </div>
-          <div className="rounded-lg bg-panel ring-1 ring-black/5 p-4">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Receita mensal</p>
-            <p className="font-display font-semibold text-2xl text-foreground mt-2">{formatMoney(data.monthlyRevenue)} Kz</p>
-          </div>
+        <section className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+          <Kpi label="Contratos activos" value={data.activeContracts} />
+          <Kpi label="Contratos pendentes" value={data.pendingContracts} tone="text-warning" />
+          <Kpi label="Alunos transportados" value={data.totalStudents} />
+          <Kpi label="Receita mensal" value={formatMoney(data.monthlyRevenue)} />
         </section>
 
+        <FormPanel open={form === "contract"} title="Novo contrato" saving={saving} onSubmit={onContract}>
+          <Field label="Escola">
+            <input name="school_name" required className={inputClass} placeholder="Colégio São José" />
+          </Field>
+          <Field label="Código da rota">
+            <input name="route_code" required className={inputClass} placeholder="R-01" />
+          </Field>
+          <Field label="Nº de alunos">
+            <input name="student_count" type="number" min={0} defaultValue={0} required className={inputClass} />
+          </Field>
+          <Field label="Mensalidade (Kz)">
+            <input name="monthly_fee" type="number" min={0} required className={inputClass} />
+          </Field>
+          <Field label="Estado">
+            <select name="status" className={inputClass} defaultValue="Activo">
+              {CONTRACT_STATES.map((s) => (
+                <option key={s}>{s}</option>
+              ))}
+            </select>
+          </Field>
+        </FormPanel>
+
+        <FormPanel open={form === "route"} title="Nova rota" saving={saving} onSubmit={onRoute}>
+          <Field label="Código">
+            <input name="route_code" required className={inputClass} placeholder="R-01" />
+          </Field>
+          <Field label="Motorista">
+            <input name="driver_name" required className={inputClass} />
+          </Field>
+          <Field label="Viatura">
+            <input name="vehicle" required className={inputClass} placeholder="Hiace — LD-00-00-AA" />
+          </Field>
+          <Field label="Nº de alunos">
+            <input name="student_count" type="number" min={0} defaultValue={0} required className={inputClass} />
+          </Field>
+          <Field label="Estado">
+            <select name="status" className={inputClass} defaultValue="Em curso">
+              {ROUTE_STATES.map((s) => (
+                <option key={s}>{s}</option>
+              ))}
+            </select>
+          </Field>
+        </FormPanel>
+
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-          <div className="rounded-lg bg-panel ring-1 ring-black/5 overflow-hidden">
-            <div className="px-5 py-4 border-b border-edge">
-              <h2 className="font-display font-semibold text-base uppercase tracking-wide text-foreground">Contratos por escola</h2>
-            </div>
+          <Card title="Contratos por escola">
             <table className="w-full text-sm">
-              <thead>
-                <tr className="text-[11px] uppercase tracking-[0.1em] text-muted-foreground border-b border-edge text-left">
-                  <th className="px-5 py-2.5">Escola</th>
-                  <th className="px-3 py-2.5">Rota</th>
-                  <th className="px-3 py-2.5">Alunos</th>
-                  <th className="px-3 py-2.5">Mensalidade</th>
-                  <th className="px-5 py-2.5">Estado</th>
+              <thead className="border-b border-edge text-left">
+                <tr>
+                  <Th>Escola</Th>
+                  <Th>Rota</Th>
+                  <Th>Alunos</Th>
+                  <Th>Mensalidade</Th>
+                  <Th>Estado</Th>
+                  <Th>Acção</Th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-edge/60">
                 {data.contracts.map((c) => (
                   <tr key={c.id} className="hover:bg-white/[0.02]">
-                    <td className="px-5 py-3 text-foreground">{c.school_name}</td>
-                    <td className="px-3 py-3 text-muted-foreground">{c.route_code}</td>
-                    <td className="px-3 py-3 text-muted-foreground">{c.student_count}</td>
-                    <td className="px-3 py-3 text-foreground/80">{formatMoney(c.monthly_fee)} Kz</td>
-                    <td className="px-5 py-3 text-muted-foreground">{c.status}</td>
+                    <Td>{c.school_name}</Td>
+                    <Td>{c.route_code}</Td>
+                    <Td>{c.student_count}</Td>
+                    <Td>{formatMoney(c.monthly_fee)}</Td>
+                    <Td>
+                      <select
+                        value={c.status}
+                        onChange={(e) =>
+                          void run(
+                            () => setContractStatus({ data: { id: c.id, status: e.target.value } }),
+                            "Estado actualizado.",
+                          )
+                        }
+                        className="rounded-md bg-ink ring-1 ring-edge px-2 py-1 text-xs text-foreground"
+                      >
+                        {CONTRACT_STATES.map((s) => (
+                          <option key={s}>{s}</option>
+                        ))}
+                      </select>
+                    </Td>
+                    <Td>
+                      <ActionButton
+                        onClick={() =>
+                          void run(
+                            () => removeRecord({ data: { table: "school_contracts", id: c.id } }),
+                            "Contrato removido.",
+                          )
+                        }
+                      >
+                        Apagar
+                      </ActionButton>
+                    </Td>
                   </tr>
                 ))}
               </tbody>
             </table>
-          </div>
+          </Card>
 
-          <div className="rounded-lg bg-panel ring-1 ring-black/5 overflow-hidden">
-            <div className="px-5 py-4 border-b border-edge">
-              <h2 className="font-display font-semibold text-base uppercase tracking-wide text-foreground">Rotas de hoje</h2>
-            </div>
+          <Card title="Rotas">
             <table className="w-full text-sm">
-              <thead>
-                <tr className="text-[11px] uppercase tracking-[0.1em] text-muted-foreground border-b border-edge text-left">
-                  <th className="px-5 py-2.5">Rota</th>
-                  <th className="px-3 py-2.5">Motorista</th>
-                  <th className="px-3 py-2.5">Viatura</th>
-                  <th className="px-3 py-2.5">Alunos</th>
-                  <th className="px-5 py-2.5">Estado</th>
+              <thead className="border-b border-edge text-left">
+                <tr>
+                  <Th>Rota</Th>
+                  <Th>Motorista</Th>
+                  <Th>Viatura</Th>
+                  <Th>Alunos</Th>
+                  <Th>Estado</Th>
+                  <Th>Acção</Th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-edge/60">
                 {data.routes.map((r) => (
                   <tr key={r.id} className="hover:bg-white/[0.02]">
-                    <td className="px-5 py-3 text-foreground font-medium">{r.route_code}</td>
-                    <td className="px-3 py-3 text-muted-foreground">{r.driver_name}</td>
-                    <td className="px-3 py-3 text-muted-foreground">{r.vehicle}</td>
-                    <td className="px-3 py-3 text-muted-foreground">{r.student_count}</td>
-                    <td className="px-5 py-3 text-muted-foreground">{r.status}</td>
+                    <Td className="font-medium">{r.route_code}</Td>
+                    <Td>{r.driver_name}</Td>
+                    <Td>{r.vehicle}</Td>
+                    <Td>{r.student_count}</Td>
+                    <Td>
+                      <select
+                        value={r.status}
+                        onChange={(e) =>
+                          void run(
+                            () => setRouteStatus({ data: { id: r.id, status: e.target.value } }),
+                            "Estado actualizado.",
+                          )
+                        }
+                        className="rounded-md bg-ink ring-1 ring-edge px-2 py-1 text-xs text-foreground"
+                      >
+                        {ROUTE_STATES.map((s) => (
+                          <option key={s}>{s}</option>
+                        ))}
+                      </select>
+                    </Td>
+                    <Td>
+                      <ActionButton
+                        onClick={() =>
+                          void run(
+                            () => removeRecord({ data: { table: "school_routes", id: r.id } }),
+                            "Rota removida.",
+                          )
+                        }
+                      >
+                        Apagar
+                      </ActionButton>
+                    </Td>
                   </tr>
                 ))}
               </tbody>
             </table>
-          </div>
+          </Card>
         </div>
       </div>
     </div>
