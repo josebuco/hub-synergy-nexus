@@ -136,14 +136,14 @@ function FaturacaoPage() {
                   dataKey="receitas"
                   name="Receitas"
                   stroke="var(--wash)"
-                  fill="color-mix(in oklch, var(--wash) 0.2%, transparent)"
+                  fill="color-mix(in oklch, var(--wash) 20%, transparent)"
                 />
                 <Area
                   type="monotone"
                   dataKey="despesas"
                   name="Despesas"
                   stroke="var(--destructive)"
-                  fill="color-mix(in oklch, var(--destructive) 0.15%, transparent)"
+                  fill="color-mix(in oklch, var(--destructive) 15%, transparent)"
                 />
               </AreaChart>
             </ResponsiveContainer>
