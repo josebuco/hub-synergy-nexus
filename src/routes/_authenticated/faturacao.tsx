@@ -118,14 +118,14 @@ function FaturacaoPage() {
           <div className="p-5 h-72">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={series}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--edge))" />
-                <XAxis dataKey="month" stroke="hsl(var(--muted-foreground))" fontSize={11} />
-                <YAxis stroke="hsl(var(--muted-foreground))" fontSize={11} />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--edge)" />
+                <XAxis dataKey="month" stroke="var(--muted-foreground)" fontSize={11} />
+                <YAxis stroke="var(--muted-foreground)" fontSize={11} />
                 <Tooltip
                   formatter={(v: number) => formatMoney(v)}
                   contentStyle={{
-                    background: "hsl(var(--panel))",
-                    border: "1px solid hsl(var(--edge))",
+                    background: "var(--panel)",
+                    border: "1px solid var(--edge)",
                     borderRadius: 8,
                     fontSize: 12,
                   }}
@@ -135,15 +135,15 @@ function FaturacaoPage() {
                   type="monotone"
                   dataKey="receitas"
                   name="Receitas"
-                  stroke="hsl(var(--wash))"
-                  fill="hsl(var(--wash) / 0.2)"
+                  stroke="var(--wash)"
+                  fill="color-mix(in oklch, var(--wash) 0.2%, transparent)"
                 />
                 <Area
                   type="monotone"
                   dataKey="despesas"
                   name="Despesas"
-                  stroke="hsl(var(--destructive))"
-                  fill="hsl(var(--destructive) / 0.15)"
+                  stroke="var(--destructive)"
+                  fill="color-mix(in oklch, var(--destructive) 0.15%, transparent)"
                 />
               </AreaChart>
             </ResponsiveContainer>
@@ -155,21 +155,21 @@ function FaturacaoPage() {
             <div className="p-5 h-72">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={comparison}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--edge))" />
-                  <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={11} />
-                  <YAxis stroke="hsl(var(--muted-foreground))" fontSize={11} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--edge)" />
+                  <XAxis dataKey="name" stroke="var(--muted-foreground)" fontSize={11} />
+                  <YAxis stroke="var(--muted-foreground)" fontSize={11} />
                   <Tooltip
                     formatter={(v: number) => formatMoney(v)}
                     contentStyle={{
-                      background: "hsl(var(--panel))",
-                      border: "1px solid hsl(var(--edge))",
+                      background: "var(--panel)",
+                      border: "1px solid var(--edge)",
                       borderRadius: 8,
                       fontSize: 12,
                     }}
                   />
                   <Legend wrapperStyle={{ fontSize: 12 }} />
-                  <Bar dataKey="receitas" name="Receitas" fill="hsl(var(--wash))" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="despesas" name="Despesas" fill="hsl(var(--destructive))" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="receitas" name="Receitas" fill="var(--wash)" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="despesas" name="Despesas" fill="var(--destructive)" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
