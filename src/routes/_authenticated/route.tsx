@@ -21,6 +21,7 @@ const sectors = [
   { id: "/lavagem", label: "Lavagem", color: "bg-wash" },
   { id: "/transporte", label: "Transporte Escolar", color: "bg-transport" },
   { id: "/custos", label: "Centro de Custos", color: "bg-brand" },
+  { id: "/faturacao", label: "Faturação", color: "bg-wash" },
 ];
 
 function AuthenticatedLayout() {
