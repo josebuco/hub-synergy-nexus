@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { queryOptions, useSuspenseQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import {
   Area,
@@ -7,19 +7,28 @@ import {
   Bar,
   BarChart,
   CartesianGrid,
+  Cell,
   Legend,
+  Pie,
+  PieChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
 } from "recharts";
 import { getFinance } from "@/lib/finance.functions";
-import { Card, Kpi, PageHeader, Td, Th, formatMoney } from "@/components/panel";
-
-const financeOptions = queryOptions({
-  queryKey: ["finance"],
-  queryFn: () => getFinance(),
-});
+import { periodLabel } from "@/lib/period";
+import {
+  Card,
+  Kpi,
+  PageHeader,
+  PeriodPicker,
+  Td,
+  Th,
+  formatMoney,
+  usePeriod,
+} from "@/components/panel";
+import { chartTooltip } from "@/components/sector-cash";
 
 export const Route = createFileRoute("/_authenticated/faturacao")({
   head: () => ({
@@ -38,36 +47,57 @@ export const Route = createFileRoute("/_authenticated/faturacao")({
       { name: "twitter:card", content: "summary" },
     ],
   }),
-  loader: async ({ context }) => {
-    await context.queryClient.ensureQueryData(financeOptions);
-  },
   component: FaturacaoPage,
 });
 
+const SECTOR_COLORS: Record<string, string> = {
+  agua: "var(--water)",
+  restaurante: "var(--restaurant)",
+  lavagem: "var(--wash)",
+  transporte: "var(--transport)",
+  geral: "var(--brand)",
+};
+
 function FaturacaoPage() {
-  const { data } = useSuspenseQuery(financeOptions);
+  const { preset, setPreset, custom, setCustom, range } = usePeriod("mes");
   const [tab, setTab] = useState<string>("todos");
 
-  const sector = data.sectors.find((s) => s.slug === tab);
-  const entries = tab === "todos" ? data.entries : data.entries.filter((e) => e.sector === tab);
+  const { data, isPending } = useQuery({
+    queryKey: ["finance", range.from, range.to],
+    queryFn: () => getFinance({ data: range }),
+  });
 
-  const revenue = sector ? sector.revenue : data.totals.revenue;
-  const expense = sector ? sector.expense : data.totals.expense;
+  const sectors = data?.sectors || [];
+  const sector = sectors.find((s) => s.slug === tab);
+  const allEntries = data?.entries || [];
+  const entries = tab === "todos" ? allEntries : allEntries.filter((e) => e.sector === tab);
+
+  const revenue = sector ? sector.revenue : data?.totals.revenue || 0;
+  const expense = sector ? sector.expense : data?.totals.expense || 0;
+  const pending = sector ? sector.pendingExpense : data?.totals.pendingExpense || 0;
   const balance = revenue - expense;
 
+  const base = sectors[0]?.series || [];
   const series = sector
     ? sector.series
-    : (data.sectors[0]?.series || []).map((_, i) => ({
-        month: data.sectors[0]!.series[i]!.month,
-        receitas: data.sectors.reduce((s, x) => s + (x.series[i]?.receitas || 0), 0),
-        despesas: data.sectors.reduce((s, x) => s + (x.series[i]?.despesas || 0), 0),
-        saldo: data.sectors.reduce((s, x) => s + (x.series[i]?.saldo || 0), 0),
+    : base.map((point, i) => ({
+        month: point.month,
+        receitas: sectors.reduce((s, x) => s + (x.series[i]?.receitas || 0), 0),
+        despesas: sectors.reduce((s, x) => s + (x.series[i]?.despesas || 0), 0),
+        saldo: sectors.reduce((s, x) => s + (x.series[i]?.saldo || 0), 0),
       }));
 
-  const comparison = data.sectors.map((s) => ({
+  const comparison = sectors.map((s) => ({
     name: s.label,
+    slug: s.slug,
     receitas: s.revenue,
     despesas: s.expense,
+  }));
+
+  const pieData = sectors.filter((s) => s.revenue > 0).map((s) => ({
+    name: s.label,
+    slug: s.slug,
+    value: s.revenue,
   }));
 
   return (
@@ -75,12 +105,15 @@ function FaturacaoPage() {
       <PageHeader
         dot="bg-brand"
         title="Faturação por Setor"
-        subtitle="Receitas, despesas e saldo de caixa dos últimos 6 meses"
+        subtitle={periodLabel(preset, range)}
+        action={
+          <PeriodPicker preset={preset} setPreset={setPreset} custom={custom} setCustom={setCustom} />
+        }
       />
 
       <div className="p-6 space-y-5 overflow-y-auto">
         <div className="flex flex-wrap gap-2">
-          {[{ slug: "todos", label: "Todos os setores" }, ...data.sectors].map((s) => (
+          {[{ slug: "todos", label: "Todos os setores" }, ...sectors].map((s) => (
             <button
               key={s.slug}
               type="button"
@@ -97,83 +130,104 @@ function FaturacaoPage() {
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Kpi label="Receitas (6 meses)" value={formatMoney(revenue)} tone="text-wash" />
-          <Kpi label="Despesas (6 meses)" value={formatMoney(expense)} tone="text-destructive" />
+          <Kpi label="Receitas do período" value={formatMoney(revenue)} tone="text-wash" />
+          <Kpi label="Despesas do período" value={formatMoney(expense)} tone="text-destructive" />
           <Kpi
             label="Saldo de caixa"
             value={formatMoney(balance)}
             tone={balance >= 0 ? "text-brand" : "text-destructive"}
           />
-          <Kpi
-            label="Receita deste mês"
-            value={formatMoney(
-              sector
-                ? sector.monthRevenue
-                : data.sectors.reduce((s, x) => s + x.monthRevenue, 0),
-            )}
-          />
+          <Kpi label="Despesas por pagar" value={formatMoney(pending)} tone="text-warning" />
         </div>
 
-        <Card title="Evolução mensal">
+        <Card title={data?.granularity === "day" ? "Evolução diária" : "Evolução mensal"}>
           <div className="p-5 h-72">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={series}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--edge)" />
-                <XAxis dataKey="month" stroke="var(--muted-foreground)" fontSize={11} />
-                <YAxis stroke="var(--muted-foreground)" fontSize={11} />
-                <Tooltip
-                  formatter={(v: number) => formatMoney(v)}
-                  contentStyle={{
-                    background: "var(--panel)",
-                    border: "1px solid var(--edge)",
-                    borderRadius: 8,
-                    fontSize: 12,
-                  }}
-                />
-                <Legend wrapperStyle={{ fontSize: 12 }} />
-                <Area
-                  type="monotone"
-                  dataKey="receitas"
-                  name="Receitas"
-                  stroke="var(--wash)"
-                  fill="color-mix(in oklch, var(--wash) 20%, transparent)"
-                />
-                <Area
-                  type="monotone"
-                  dataKey="despesas"
-                  name="Despesas"
-                  stroke="var(--destructive)"
-                  fill="color-mix(in oklch, var(--destructive) 15%, transparent)"
-                />
-              </AreaChart>
-            </ResponsiveContainer>
+            {isPending ? (
+              <p className="text-sm text-muted-foreground">A carregar…</p>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={series}>
+                  <defs>
+                    <linearGradient id="fatRev" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="var(--wash)" stopOpacity={0.5} />
+                      <stop offset="100%" stopColor="var(--wash)" stopOpacity={0.02} />
+                    </linearGradient>
+                    <linearGradient id="fatExp" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="var(--destructive)" stopOpacity={0.45} />
+                      <stop offset="100%" stopColor="var(--destructive)" stopOpacity={0.02} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--edge)" />
+                  <XAxis dataKey="month" stroke="var(--muted-foreground)" fontSize={11} />
+                  <YAxis stroke="var(--muted-foreground)" fontSize={11} width={70} />
+                  <Tooltip formatter={(v: number) => formatMoney(v)} contentStyle={chartTooltip} />
+                  <Legend wrapperStyle={{ fontSize: 12 }} />
+                  <Area
+                    type="monotone"
+                    dataKey="receitas"
+                    name="Receitas"
+                    stroke="var(--wash)"
+                    strokeWidth={2}
+                    fill="url(#fatRev)"
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="despesas"
+                    name="Despesas"
+                    stroke="var(--destructive)"
+                    strokeWidth={2}
+                    fill="url(#fatExp)"
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            )}
           </div>
         </Card>
 
         {tab === "todos" ? (
-          <Card title="Comparação entre setores">
-            <div className="p-5 h-72">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={comparison}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--edge)" />
-                  <XAxis dataKey="name" stroke="var(--muted-foreground)" fontSize={11} />
-                  <YAxis stroke="var(--muted-foreground)" fontSize={11} />
-                  <Tooltip
-                    formatter={(v: number) => formatMoney(v)}
-                    contentStyle={{
-                      background: "var(--panel)",
-                      border: "1px solid var(--edge)",
-                      borderRadius: 8,
-                      fontSize: 12,
-                    }}
-                  />
-                  <Legend wrapperStyle={{ fontSize: 12 }} />
-                  <Bar dataKey="receitas" name="Receitas" fill="var(--wash)" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="despesas" name="Despesas" fill="var(--destructive)" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+            <div className="lg:col-span-2">
+              <Card title="Comparação entre setores">
+                <div className="p-5 h-72">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={comparison}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="var(--edge)" />
+                      <XAxis dataKey="name" stroke="var(--muted-foreground)" fontSize={11} />
+                      <YAxis stroke="var(--muted-foreground)" fontSize={11} width={70} />
+                      <Tooltip formatter={(v: number) => formatMoney(v)} contentStyle={chartTooltip} />
+                      <Legend wrapperStyle={{ fontSize: 12 }} />
+                      <Bar dataKey="receitas" name="Receitas" fill="var(--wash)" radius={[4, 4, 0, 0]} />
+                      <Bar
+                        dataKey="despesas"
+                        name="Despesas"
+                        fill="var(--destructive)"
+                        radius={[4, 4, 0, 0]}
+                      />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </Card>
             </div>
-          </Card>
+            <Card title="Peso de cada setor">
+              <div className="p-5 h-72">
+                {pieData.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">Sem receitas neste período.</p>
+                ) : (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie data={pieData} dataKey="value" nameKey="name" innerRadius={55} outerRadius={90} paddingAngle={3}>
+                        {pieData.map((p) => (
+                          <Cell key={p.slug} fill={SECTOR_COLORS[p.slug] || "var(--brand)"} />
+                        ))}
+                      </Pie>
+                      <Tooltip formatter={(v: number) => formatMoney(v)} contentStyle={chartTooltip} />
+                      <Legend wrapperStyle={{ fontSize: 11 }} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                )}
+              </div>
+            </Card>
+          </div>
         ) : null}
 
         <Card title="Caixa por setor">
@@ -183,16 +237,22 @@ function FaturacaoPage() {
                 <Th>Setor</Th>
                 <Th>Receitas</Th>
                 <Th>Despesas</Th>
+                <Th>Por pagar</Th>
                 <Th>Saldo</Th>
               </tr>
             </thead>
             <tbody className="divide-y divide-edge">
-              {data.sectors.map((s) => (
+              {sectors.map((s) => (
                 <tr key={s.slug} className="hover:bg-white/5">
                   <Td className="font-medium">{s.label}</Td>
                   <Td className="text-wash">{formatMoney(s.revenue)}</Td>
                   <Td className="text-destructive">{formatMoney(s.expense)}</Td>
-                  <Td className={s.balance >= 0 ? "text-brand font-semibold" : "text-destructive font-semibold"}>
+                  <Td className="text-warning">{formatMoney(s.pendingExpense)}</Td>
+                  <Td
+                    className={
+                      s.balance >= 0 ? "text-brand font-semibold" : "text-destructive font-semibold"
+                    }
+                  >
                     {formatMoney(s.balance)}
                   </Td>
                 </tr>
@@ -201,7 +261,7 @@ function FaturacaoPage() {
           </table>
         </Card>
 
-        <Card title="Movimentos recentes">
+        <Card title="Movimentos do período">
           <table className="w-full text-sm">
             <thead className="bg-ink/60 text-left">
               <tr>
@@ -220,7 +280,9 @@ function FaturacaoPage() {
                   <Td>
                     <span
                       className={`px-2 py-0.5 rounded text-[11px] font-semibold uppercase tracking-wide ${
-                        e.kind === "receita" ? "bg-wash/15 text-wash" : "bg-destructive/15 text-destructive"
+                        e.kind === "receita"
+                          ? "bg-wash/15 text-wash"
+                          : "bg-destructive/15 text-destructive"
                       }`}
                     >
                       {e.kind}
@@ -235,7 +297,7 @@ function FaturacaoPage() {
               ))}
               {entries.length === 0 ? (
                 <tr>
-                  <Td className="text-muted-foreground">Sem movimentos registados.</Td>
+                  <Td className="text-muted-foreground">Sem movimentos neste período.</Td>
                 </tr>
               ) : null}
             </tbody>
