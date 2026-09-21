@@ -17,6 +17,7 @@ import {
   formatMoney,
   inputClass,
 } from "@/components/panel";
+import { SectorCash } from "@/components/sector-cash";
 
 const washOptions = queryOptions({
   queryKey: ["sector", "lavagem"],
@@ -125,6 +126,8 @@ function LavagemPage() {
           <Kpi label="Em curso" value={data.inProgress} />
           <Kpi label="Receita hoje" value={formatMoney(data.todayRevenue)} />
         </section>
+
+        <SectorCash slug="lavagem" />
 
         <FormPanel open={form === "car"} title="Novo carro na fila" saving={saving} onSubmit={onCar}>
           <Field label="Veículo">

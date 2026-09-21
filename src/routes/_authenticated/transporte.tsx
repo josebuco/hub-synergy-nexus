@@ -23,6 +23,7 @@ import {
   formatMoney,
   inputClass,
 } from "@/components/panel";
+import { SectorCash } from "@/components/sector-cash";
 
 const transportOptions = queryOptions({
   queryKey: ["sector", "transporte"],
@@ -144,6 +145,8 @@ function TransportePage() {
           <Kpi label="Alunos transportados" value={data.totalStudents} />
           <Kpi label="Receita mensal" value={formatMoney(data.monthlyRevenue)} />
         </section>
+
+        <SectorCash slug="transporte" />
 
         <FormPanel open={form === "contract"} title="Novo contrato" saving={saving} onSubmit={onContract}>
           <Field label="Escola">
