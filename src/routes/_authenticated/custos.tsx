@@ -57,7 +57,21 @@ function CustosPage() {
   const [saving, setSaving] = useState(false);
   const [file, setFile] = useState<File | null>(null);
 
-  const rows = data.expenses.filter((e) => e.sector === tab);
+  const { preset, setPreset, custom, setCustom, range } = usePeriod("mes");
+
+  const inRange = data.expenses.filter(
+    (e) => e.expense_date >= range.from && e.expense_date <= range.to,
+  );
+  const periodBySector: Record<string, number> = {};
+  for (const e of inRange) {
+    periodBySector[e.sector] = (periodBySector[e.sector] || 0) + (e.amount || 0);
+  }
+  const periodTotal = inRange.reduce((s, e) => s + (e.amount || 0), 0);
+  const periodPending = inRange
+    .filter((e) => e.status === "Pendente")
+    .reduce((s, e) => s + (e.amount || 0), 0);
+
+  const rows = inRange.filter((e) => e.sector === tab);
   const tabTotal = rows.reduce((s, e) => s + (e.amount || 0), 0);
   const tabPending = rows
     .filter((e) => e.status === "Pendente")
