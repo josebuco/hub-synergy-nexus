@@ -140,13 +140,14 @@ function CustosPage() {
 
   return (
     <div className="flex-1 flex flex-col min-w-0">
-      <header className="h-16 shrink-0 bg-panel/80 border-b border-edge flex items-center justify-between px-6">
+      <header className="min-h-16 shrink-0 bg-panel/80 border-b border-edge flex flex-wrap items-center justify-between gap-3 px-6 py-3">
         <div>
           <h1 className="font-display font-semibold text-lg uppercase tracking-wide text-foreground">
             Centro de Custos
           </h1>
-          <p className="text-[11px] text-muted-foreground">Despesas e faturas por setor</p>
+          <p className="text-[11px] text-muted-foreground">{periodLabel(preset, range)}</p>
         </div>
+        <PeriodPicker preset={preset} setPreset={setPreset} custom={custom} setCustom={setCustom} />
         <button
           onClick={() => setOpen((v) => !v)}
           className="px-3 py-1.5 text-sm font-medium text-primary-foreground bg-brand rounded-md hover:bg-brand/90"
