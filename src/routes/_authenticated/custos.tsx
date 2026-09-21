@@ -160,18 +160,18 @@ function CustosPage() {
         <section className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div className="rounded-lg bg-panel ring-1 ring-black/5 p-4">
             <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-              Despesas do mês
+              Despesas do período
             </p>
             <p className="font-display font-semibold text-2xl text-foreground mt-2">
-              {formatMoney(data.monthTotal)} Kz
+              {formatMoney(periodTotal)} Kz
             </p>
           </div>
           <div className="rounded-lg bg-panel ring-1 ring-black/5 p-4">
             <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-              Por pagar
+              Por pagar no período
             </p>
             <p className="font-display font-semibold text-2xl text-warning mt-2">
-              {formatMoney(data.pendingTotal)} Kz
+              {formatMoney(periodPending)} Kz
             </p>
           </div>
           <div className="rounded-lg bg-panel ring-1 ring-black/5 p-4">
