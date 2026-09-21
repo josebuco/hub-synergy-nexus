@@ -22,6 +22,7 @@ import {
   formatMoney,
   inputClass,
 } from "@/components/panel";
+import { SectorCash } from "@/components/sector-cash";
 
 const waterOptions = queryOptions({
   queryKey: ["sector", "agua"],
@@ -143,6 +144,8 @@ function AguaPage() {
           <Kpi label="Entregas pendentes" value={pending} tone="text-warning" />
           <Kpi label="Stock baixo" value={data.lowStock} tone="text-warning" />
         </section>
+
+        <SectorCash slug="agua" />
 
         <FormPanel open={form === "sale"} title="Nova venda" saving={saving} onSubmit={onSale}>
           <Field label="Produto">

@@ -17,6 +17,7 @@ import {
   formatMoney,
   inputClass,
 } from "@/components/panel";
+import { SectorCash } from "@/components/sector-cash";
 
 const restaurantOptions = queryOptions({
   queryKey: ["sector", "restaurante"],
@@ -150,6 +151,8 @@ function RestaurantePage() {
           <Kpi label="Mesas ocupadas" value={`${data.occupied} / ${data.tables.length}`} />
           <Kpi label="Ticket médio" value={formatMoney(avgTicket)} />
         </section>
+
+        <SectorCash slug="restaurante" />
 
         <FormPanel open={form === "order"} title="Novo pedido" saving={saving} onSubmit={onOrder}>
           <Field label="Mesa">

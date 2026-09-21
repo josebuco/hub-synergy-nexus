@@ -1,4 +1,62 @@
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
+import { PERIOD_OPTIONS, resolvePeriod, type PeriodPreset } from "@/lib/period";
+
+export function usePeriod(initial: PeriodPreset = "mes") {
+  const [preset, setPreset] = useState<PeriodPreset>(initial);
+  const [custom, setCustom] = useState(() => resolvePeriod("mes"));
+  const range = preset === "personalizado" ? custom : resolvePeriod(preset);
+  return { preset, setPreset, custom, setCustom, range };
+}
+
+export function PeriodPicker({
+  preset,
+  setPreset,
+  custom,
+  setCustom,
+}: {
+  preset: PeriodPreset;
+  setPreset: (p: PeriodPreset) => void;
+  custom: { from: string; to: string };
+  setCustom: (r: { from: string; to: string }) => void;
+}) {
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-wrap items-center rounded-md bg-ink ring-1 ring-edge p-0.5">
+        {PERIOD_OPTIONS.map((p) => (
+          <button
+            key={p.id}
+            type="button"
+            onClick={() => setPreset(p.id)}
+            className={`px-2.5 py-1 text-xs rounded transition-colors ${
+              preset === p.id
+                ? "bg-brand font-medium text-primary-foreground"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            {p.label}
+          </button>
+        ))}
+      </div>
+      {preset === "personalizado" ? (
+        <div className="flex items-center gap-1.5">
+          <input
+            type="date"
+            value={custom.from}
+            onChange={(e) => setCustom({ ...custom, from: e.target.value })}
+            className="rounded-md bg-ink ring-1 ring-edge px-2 py-1 text-xs text-foreground"
+          />
+          <span className="text-xs text-muted-foreground">a</span>
+          <input
+            type="date"
+            value={custom.to}
+            onChange={(e) => setCustom({ ...custom, to: e.target.value })}
+            className="rounded-md bg-ink ring-1 ring-edge px-2 py-1 text-xs text-foreground"
+          />
+        </div>
+      ) : null}
+    </div>
+  );
+}
 
 export function formatMoney(value: number) {
   return `${Math.round(value).toLocaleString("pt-AO")} Kz`;

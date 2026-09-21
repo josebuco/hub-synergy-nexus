@@ -10,6 +10,8 @@ import {
   deleteExpense,
   getInvoiceUrl,
 } from "@/lib/expenses.functions";
+import { PeriodPicker, usePeriod } from "@/components/panel";
+import { periodLabel } from "@/lib/period";
 
 const expensesOptions = queryOptions({
   queryKey: ["expenses"],
@@ -55,7 +57,21 @@ function CustosPage() {
   const [saving, setSaving] = useState(false);
   const [file, setFile] = useState<File | null>(null);
 
-  const rows = data.expenses.filter((e) => e.sector === tab);
+  const { preset, setPreset, custom, setCustom, range } = usePeriod("mes");
+
+  const inRange = data.expenses.filter(
+    (e) => e.expense_date >= range.from && e.expense_date <= range.to,
+  );
+  const periodBySector: Record<string, number> = {};
+  for (const e of inRange) {
+    periodBySector[e.sector] = (periodBySector[e.sector] || 0) + (e.amount || 0);
+  }
+  const periodTotal = inRange.reduce((s, e) => s + (e.amount || 0), 0);
+  const periodPending = inRange
+    .filter((e) => e.status === "Pendente")
+    .reduce((s, e) => s + (e.amount || 0), 0);
+
+  const rows = inRange.filter((e) => e.sector === tab);
   const tabTotal = rows.reduce((s, e) => s + (e.amount || 0), 0);
   const tabPending = rows
     .filter((e) => e.status === "Pendente")
@@ -124,13 +140,14 @@ function CustosPage() {
 
   return (
     <div className="flex-1 flex flex-col min-w-0">
-      <header className="h-16 shrink-0 bg-panel/80 border-b border-edge flex items-center justify-between px-6">
+      <header className="min-h-16 shrink-0 bg-panel/80 border-b border-edge flex flex-wrap items-center justify-between gap-3 px-6 py-3">
         <div>
           <h1 className="font-display font-semibold text-lg uppercase tracking-wide text-foreground">
             Centro de Custos
           </h1>
-          <p className="text-[11px] text-muted-foreground">Despesas e faturas por setor</p>
+          <p className="text-[11px] text-muted-foreground">{periodLabel(preset, range)}</p>
         </div>
+        <PeriodPicker preset={preset} setPreset={setPreset} custom={custom} setCustom={setCustom} />
         <button
           onClick={() => setOpen((v) => !v)}
           className="px-3 py-1.5 text-sm font-medium text-primary-foreground bg-brand rounded-md hover:bg-brand/90"
@@ -143,18 +160,18 @@ function CustosPage() {
         <section className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div className="rounded-lg bg-panel ring-1 ring-black/5 p-4">
             <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-              Despesas do mês
+              Despesas do período
             </p>
             <p className="font-display font-semibold text-2xl text-foreground mt-2">
-              {formatMoney(data.monthTotal)} Kz
+              {formatMoney(periodTotal)} Kz
             </p>
           </div>
           <div className="rounded-lg bg-panel ring-1 ring-black/5 p-4">
             <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-              Por pagar
+              Por pagar no período
             </p>
             <p className="font-display font-semibold text-2xl text-warning mt-2">
-              {formatMoney(data.pendingTotal)} Kz
+              {formatMoney(periodPending)} Kz
             </p>
           </div>
           <div className="rounded-lg bg-panel ring-1 ring-black/5 p-4">
