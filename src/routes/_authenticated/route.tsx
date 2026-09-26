@@ -1,6 +1,7 @@
 import { createFileRoute, Outlet, redirect, Link, useRouter } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAccess } from "@/lib/use-access";
 
 export const Route = createFileRoute("/_authenticated")({
   ssr: false,
@@ -14,15 +15,16 @@ export const Route = createFileRoute("/_authenticated")({
   component: AuthenticatedLayout,
 });
 
-const sectors = [
-  { id: "/dashboard", label: "Painel geral", color: "bg-primary" },
-  { id: "/agua", label: "Água", color: "bg-water" },
-  { id: "/restaurante", label: "Restaurante", color: "bg-restaurant" },
-  { id: "/lavagem", label: "Lavagem", color: "bg-wash" },
-  { id: "/transporte", label: "Transporte Escolar", color: "bg-transport" },
-  { id: "/custos", label: "Centro de Custos", color: "bg-brand" },
-  { id: "/faturacao", label: "Faturação", color: "bg-wash" },
-];
+const allSectors = [
+  { id: "/dashboard", label: "Painel geral", color: "bg-primary", perm: "admin" },
+  { id: "/agua", label: "Água", color: "bg-water", perm: "agua" },
+  { id: "/restaurante", label: "Restaurante", color: "bg-restaurant", perm: "restaurante" },
+  { id: "/lavagem", label: "Lavagem", color: "bg-wash", perm: "lavagem" },
+  { id: "/transporte", label: "Transporte Escolar", color: "bg-transport", perm: "transporte" },
+  { id: "/custos", label: "Centro de Custos", color: "bg-brand", perm: "custos" },
+  { id: "/faturacao", label: "Faturação", color: "bg-wash", perm: "admin" },
+  { id: "/utilizadores", label: "Utilizadores", color: "bg-muted-foreground", perm: "admin" },
+] as const;
 
 function AuthenticatedLayout() {
   const router = useRouter();
@@ -34,6 +36,15 @@ function AuthenticatedLayout() {
     });
     return () => unsubscribe();
   }, [router]);
+
+  const access = useAccess();
+  const sectors = allSectors.filter((s) => access.isAdmin || access.sectors.includes(s.perm));
+
+  useEffect(() => {
+    if ("loading" in access || access.isAdmin) return;
+    const allowed = sectors.some((s) => currentPath.startsWith(s.id));
+    if (!allowed && sectors[0]) router.navigate({ to: sectors[0].id, replace: true });
+  }, [access, currentPath]);
 
   async function handleSignOut() {
     await supabase.auth.signOut();
@@ -86,10 +97,10 @@ function AuthenticatedLayout() {
             className="w-full rounded-md bg-panel ring-1 ring-black/5 p-3 text-left flex items-center gap-3 hover:bg-white/5 transition-colors"
           >
             <div className="size-9 rounded-md bg-edge grid place-items-center font-display font-semibold text-muted-foreground text-sm">
-              AD
+              {access.isAdmin ? "AD" : "TR"}
             </div>
             <div className="leading-tight min-w-0">
-              <p className="text-sm font-medium text-foreground truncate">Administrador</p>
+              <p className="text-sm font-medium text-foreground truncate">{access.name || "…"}</p>
               <p className="text-[11px] text-muted-foreground truncate">Sair da conta</p>
             </div>
           </button>
