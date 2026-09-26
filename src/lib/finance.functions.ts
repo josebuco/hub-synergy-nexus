@@ -39,23 +39,17 @@ export const getFinance = createServerFn({ method: "GET" })
     );
     const granularity: "day" | "month" = spanDays <= 62 ? "day" : "month";
 
-    const [sales, orders, wash, contracts, expenses] = await Promise.all([
+    const [sales, quick, expenses] = await Promise.all([
       context.supabase
         .from("water_sales")
         .select("total, created_at, client_name, status")
         .gte("created_at", fromIso)
         .lte("created_at", toIso),
       context.supabase
-        .from("restaurant_orders")
-        .select("total, created_at, status")
+        .from("sector_entries")
+        .select("id, sector, amount, created_at")
         .gte("created_at", fromIso)
         .lte("created_at", toIso),
-      context.supabase
-        .from("wash_queue")
-        .select("total, created_at, status, car_description")
-        .gte("created_at", fromIso)
-        .lte("created_at", toIso),
-      context.supabase.from("school_contracts").select("monthly_fee, status, school_name, created_at"),
       context.supabase
         .from("expenses")
         .select("*")
@@ -126,48 +120,15 @@ export const getFinance = createServerFn({ method: "GET" })
         status: s.status || "—",
       });
     }
-    for (const o of orders.data || []) {
-      if (o.status === "Cancelado") continue;
-      add(revenue, "restaurante", o.created_at, o.total || 0);
+    for (const q of quick.data || []) {
+      add(revenue, q.sector, q.created_at, q.amount || 0);
       entries.push({
-        sector: "restaurante",
+        sector: q.sector,
         kind: "receita",
-        date: o.created_at,
-        description: "Pedido no restaurante",
-        amount: o.total || 0,
-        status: o.status || "—",
-      });
-    }
-    for (const w of wash.data || []) {
-      if (w.status === "Cancelado") continue;
-      add(revenue, "lavagem", w.created_at, w.total || 0);
-      entries.push({
-        sector: "lavagem",
-        kind: "receita",
-        date: w.created_at,
-        description: `Lavagem — ${w.car_description}`,
-        amount: w.total || 0,
-        status: w.status || "—",
-      });
-    }
-
-    // Transport: monthly fees spread over the period
-    const activeContracts = (contracts.data || []).filter((c) => c.status === "Activo");
-    const monthlyTotal = activeContracts.reduce((s, c) => s + (c.monthly_fee || 0), 0);
-    if (granularity === "month") {
-      for (const m of buckets) revenue["transporte"]![m] = monthlyTotal;
-    } else {
-      const perDay = Math.round(monthlyTotal / 30);
-      for (const d of buckets) revenue["transporte"]![d] = perDay;
-    }
-    for (const c of activeContracts) {
-      entries.push({
-        sector: "transporte",
-        kind: "receita",
-        date: new Date().toISOString(),
-        description: `Mensalidade — ${c.school_name}`,
-        amount: c.monthly_fee || 0,
-        status: "Activo",
+        date: q.created_at,
+        description: "Entrada",
+        amount: q.amount || 0,
+        status: "Recebido",
       });
     }
 

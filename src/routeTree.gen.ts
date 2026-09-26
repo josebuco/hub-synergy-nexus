@@ -19,6 +19,7 @@ import { Route as AuthenticatedFaturacaoRouteImport } from './routes/_authentica
 import { Route as AuthenticatedLavagemRouteImport } from './routes/_authenticated/lavagem'
 import { Route as AuthenticatedRestauranteRouteImport } from './routes/_authenticated/restaurante'
 import { Route as AuthenticatedTransporteRouteImport } from './routes/_authenticated/transporte'
+import { Route as AuthenticatedUtilizadoresRouteImport } from './routes/_authenticated/utilizadores'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -70,6 +71,12 @@ const AuthenticatedTransporteRoute = AuthenticatedTransporteRouteImport.update({
   path: '/transporte',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedUtilizadoresRoute =
+  AuthenticatedUtilizadoresRouteImport.update({
+    id: '/utilizadores',
+    path: '/utilizadores',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -81,6 +88,7 @@ export interface FileRoutesByFullPath {
   '/lavagem': typeof AuthenticatedLavagemRoute
   '/restaurante': typeof AuthenticatedRestauranteRoute
   '/transporte': typeof AuthenticatedTransporteRoute
+  '/utilizadores': typeof AuthenticatedUtilizadoresRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -92,6 +100,7 @@ export interface FileRoutesByTo {
   '/lavagem': typeof AuthenticatedLavagemRoute
   '/restaurante': typeof AuthenticatedRestauranteRoute
   '/transporte': typeof AuthenticatedTransporteRoute
+  '/utilizadores': typeof AuthenticatedUtilizadoresRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -105,6 +114,7 @@ export interface FileRoutesById {
   '/_authenticated/lavagem': typeof AuthenticatedLavagemRoute
   '/_authenticated/restaurante': typeof AuthenticatedRestauranteRoute
   '/_authenticated/transporte': typeof AuthenticatedTransporteRoute
+  '/_authenticated/utilizadores': typeof AuthenticatedUtilizadoresRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -118,6 +128,7 @@ export interface FileRouteTypes {
     | '/lavagem'
     | '/restaurante'
     | '/transporte'
+    | '/utilizadores'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -129,6 +140,7 @@ export interface FileRouteTypes {
     | '/lavagem'
     | '/restaurante'
     | '/transporte'
+    | '/utilizadores'
   id:
     | '__root__'
     | '/'
@@ -141,6 +153,7 @@ export interface FileRouteTypes {
     | '/_authenticated/lavagem'
     | '/_authenticated/restaurante'
     | '/_authenticated/transporte'
+    | '/_authenticated/utilizadores'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -221,6 +234,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedTransporteRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/utilizadores': {
+      id: '/_authenticated/utilizadores'
+      path: '/utilizadores'
+      fullPath: '/utilizadores'
+      preLoaderRoute: typeof AuthenticatedUtilizadoresRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
   }
 }
 
@@ -232,6 +252,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedLavagemRoute: typeof AuthenticatedLavagemRoute
   AuthenticatedRestauranteRoute: typeof AuthenticatedRestauranteRoute
   AuthenticatedTransporteRoute: typeof AuthenticatedTransporteRoute
+  AuthenticatedUtilizadoresRoute: typeof AuthenticatedUtilizadoresRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
@@ -242,6 +263,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedLavagemRoute: AuthenticatedLavagemRoute,
   AuthenticatedRestauranteRoute: AuthenticatedRestauranteRoute,
   AuthenticatedTransporteRoute: AuthenticatedTransporteRoute,
+  AuthenticatedUtilizadoresRoute: AuthenticatedUtilizadoresRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =
