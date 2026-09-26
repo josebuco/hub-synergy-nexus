@@ -256,6 +256,30 @@ export type Database = {
         }
         Relationships: []
       }
+      sector_entries: {
+        Row: {
+          amount: number
+          created_at: string
+          created_by: string | null
+          id: string
+          sector: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          sector: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          sector?: string
+        }
+        Relationships: []
+      }
       sectors: {
         Row: {
           color: string
@@ -280,6 +304,69 @@ export type Database = {
           name?: string
           slug?: string
           sort_order?: number
+        }
+        Relationships: []
+      }
+      staff_accounts: {
+        Row: {
+          active: boolean
+          created_at: string
+          email: string
+          full_name: string
+          role_label: string
+          user_id: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          email: string
+          full_name: string
+          role_label?: string
+          user_id: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          email?: string
+          full_name?: string
+          role_label?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_permissions: {
+        Row: {
+          id: string
+          sector: string
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          sector: string
+          user_id: string
+        }
+        Update: {
+          id?: string
+          sector?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
         }
         Relationships: []
       }
@@ -412,10 +499,20 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      can_access: {
+        Args: { _sector: string; _user_id: string }
+        Returns: boolean
+      }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "tecnico"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -542,6 +639,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "tecnico"],
+    },
   },
 } as const
