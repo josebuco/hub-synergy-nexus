@@ -129,7 +129,7 @@ export function QuickCashPage({
               Saldo <Wallet className="size-4" />
             </div>
             <p className={`mt-2 font-display text-4xl ${balance >= 0 ? "text-brand" : "text-destructive"}`}>
-              {formatMoney(balance)} <span className="text-base">Kz</span>
+              {formatMoney(balance)}
             </p>
           </div>
         </section>

@@ -97,7 +97,7 @@ function DashboardPage() {
                   <Row k="Despesas" v={s.expense} tone="text-destructive" />
                 </dl>
                 <p className={`mt-3 font-display text-2xl ${s.balance >= 0 ? "text-foreground" : "text-destructive"}`}>
-                  {formatMoney(s.balance)} <span className="text-xs text-muted-foreground">Kz</span>
+                  {formatMoney(s.balance)}
                 </p>
               </div>
             );
@@ -202,7 +202,7 @@ function Big({
         {label} {icon}
       </div>
       <p className={`mt-2 font-display text-3xl ${tone}`}>
-        {formatMoney(value)} <span className="text-sm text-muted-foreground">Kz</span>
+        {formatMoney(value)}
       </p>
     </div>
   );
