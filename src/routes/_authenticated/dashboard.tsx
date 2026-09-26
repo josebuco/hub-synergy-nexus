@@ -84,7 +84,7 @@ function DashboardPage() {
 
         <section className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-3">
           {sectors.map((s) => {
-            const m = META[s.slug] ?? META.geral!;
+            const m = META[s.slug] ?? META["geral"]!;
             const Icon = m.icon;
             return (
               <div key={s.slug} className="relative overflow-hidden rounded-xl bg-panel ring-1 ring-edge p-4">

@@ -55,7 +55,7 @@ export function QuickCashPage({
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     const value = Math.round(Number(amount));
-    if (!value || value <= 0) return toast.error("Indique um valor válido.");
+    if (!value || value <= 0) { toast.error("Indique um valor válido."); return; }
     setSaving(true);
     try {
       await add({ data: { sector: slug, amount: value } });
