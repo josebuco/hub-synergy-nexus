@@ -1,9 +1,14 @@
 import { useState, type ReactNode } from "react";
 import { PERIOD_OPTIONS, resolvePeriod, type PeriodPreset } from "@/lib/period";
+import { useAccess } from "@/lib/use-access";
 
 export function usePeriod(initial: PeriodPreset = "mes") {
   const [preset, setPreset] = useState<PeriodPreset>(initial);
   const [custom, setCustom] = useState(() => resolvePeriod("mes"));
+  const { isAdmin } = useAccess();
+  if (!isAdmin) {
+    return { preset: "hoje" as PeriodPreset, setPreset, custom, setCustom, range: resolvePeriod("hoje") };
+  }
   const range = preset === "personalizado" ? custom : resolvePeriod(preset);
   return { preset, setPreset, custom, setCustom, range };
 }
@@ -19,6 +24,14 @@ export function PeriodPicker({
   custom: { from: string; to: string };
   setCustom: (r: { from: string; to: string }) => void;
 }) {
+  const { isAdmin } = useAccess();
+  if (!isAdmin) {
+    return (
+      <span className="px-2.5 py-1 text-xs rounded-md bg-ink ring-1 ring-edge text-muted-foreground">
+        Hoje — acesso diário
+      </span>
+    );
+  }
   return (
     <div className="flex flex-wrap items-center gap-2">
       <div className="flex flex-wrap items-center rounded-md bg-ink ring-1 ring-edge p-0.5">

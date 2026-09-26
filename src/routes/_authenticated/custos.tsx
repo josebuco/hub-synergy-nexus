@@ -11,6 +11,7 @@ import {
   getInvoiceUrl,
 } from "@/lib/expenses.functions";
 import { PeriodPicker, usePeriod } from "@/components/panel";
+import { useAccess } from "@/lib/use-access";
 import { periodLabel } from "@/lib/period";
 
 const expensesOptions = queryOptions({
@@ -39,12 +40,13 @@ function formatMoney(value: number) {
 }
 
 const CATEGORIES = [
-  "Compras / Stock",
-  "Salários",
+  "Manutenção e Reparação",
+  "Subsídio de Alimentação",
+  "Energia",
+  "Casa",
   "Combustível",
-  "Manutenção",
-  "Energia e Água",
-  "Renda",
+  "Salários",
+  "Compras / Stock",
   "Impostos",
   "Outros",
 ];
@@ -52,6 +54,7 @@ const CATEGORIES = [
 function CustosPage() {
   const { data } = useSuspenseQuery(expensesOptions);
   const queryClient = useQueryClient();
+  const access = useAccess();
   const [tab, setTab] = useState<string>("agua");
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -185,7 +188,7 @@ function CustosPage() {
         </section>
 
         <div className="flex flex-wrap gap-1 border-b border-edge">
-          {SECTORS.map((s) => (
+          {SECTORS.filter((s) => access.isAdmin || access.sectors.includes(s.slug)).map((s) => (
             <button
               key={s.slug}
               onClick={() => setTab(s.slug)}
